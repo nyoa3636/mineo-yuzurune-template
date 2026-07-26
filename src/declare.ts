@@ -12,6 +12,14 @@ async function visibleText(page: Page): Promise<string> {
   return page.locator("body").innerText({ timeout });
 }
 
+async function currentDeclarationState(page: Page): Promise<ReturnType<typeof declarationState>> {
+  const flagControl = page.locator('input[name="devolveSengenFlg"]');
+  const flag = await flagControl.count() === 1
+    ? await flagControl.getAttribute("value")
+    : undefined;
+  return declarationState(await visibleText(page), flag);
+}
+
 async function firstVisible(candidates: Locator[]): Promise<Locator | undefined> {
   for (const candidate of candidates) {
     if (await candidate.count() > 0 && await candidate.first().isVisible().catch(() => false)) {
@@ -53,8 +61,7 @@ async function main(): Promise<void> {
     await page.goto(MY_PAGE_URL, { waitUntil: "domcontentloaded", timeout });
     await ensureAuthenticated(page);
 
-    let text = await visibleText(page);
-    let state = declarationState(text);
+    let state = await currentDeclarationState(page);
     if (state === "declared") {
       console.log("YUZURUNE_ALREADY_DECLARED");
       return;
@@ -79,8 +86,7 @@ async function main(): Promise<void> {
     await page.waitForLoadState("domcontentloaded").catch(() => undefined);
     await ensureAuthenticated(page);
     await page.waitForTimeout(500);
-    text = await visibleText(page);
-    state = declarationState(text);
+    state = await currentDeclarationState(page);
 
     if (state !== "declared") {
       fail("DECLARATION_NOT_CONFIRMED", "the confirmation text was not found after clicking the declaration control");

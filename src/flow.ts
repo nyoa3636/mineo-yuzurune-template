@@ -4,7 +4,13 @@ export type DeclarationState = "declared" | "available" | "unknown";
  * Determines the declaration state from visible Japanese UI text.  This is
  * deliberately independent of page markup so that it can be unit tested.
  */
-export function declarationState(visibleText: string): DeclarationState {
+export function declarationState(visibleText: string, declarationFlag?: string | null): DeclarationState {
+  // mineo exposes the authoritative declaration state as a hidden form field.
+  // The visible submit button can continue to say "宣言待ち" even after a
+  // successful declaration, so prefer this signal when it is present.
+  if (declarationFlag === "1") return "declared";
+  if (declarationFlag === "0") return "available";
+
   const normalized = visibleText.replace(/\s/g, "");
 
   if (/ゆずるね。?(?:を)?宣言(?:済み|しました)/.test(normalized) || /宣言済み/.test(normalized)) {

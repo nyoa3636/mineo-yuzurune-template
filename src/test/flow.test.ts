@@ -7,6 +7,11 @@ test("recognizes declared state", () => {
   assert.equal(declarationState("ゆずるね。宣言しました"), "declared");
 });
 
+test("prefers mineo declaration flag over misleading button text", () => {
+  assert.equal(declarationState("ゆずるね。宣言待ち", "1"), "declared");
+  assert.equal(declarationState("ゆずるね。宣言済み", "0"), "available");
+});
+
 test("recognizes available declaration", () => {
   assert.equal(declarationState("明日のゆずるね。を宣言する"), "available");
 });
