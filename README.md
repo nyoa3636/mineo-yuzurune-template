@@ -2,9 +2,17 @@
 
 GitHub Actionsで、平日16:10（日本時間）にmineoマイページへアクセスし、翌営業日の「ゆずるね。」を宣言します。金曜日の実行は月曜日分です。
 
+## テンプレートから始める
+
+1. GitHubの **Use this template → Create a new repository** を選びます。
+2. 作成するリポジトリの公開範囲は **Private** を推奨します。
+3. 作成したリポジトリを手元へcloneし、以下の初回設定を行います。
+
+公開テンプレートには認証情報やセッションは含まれていません。利用者ごとに自分のリポジトリへ `MINEO_STORAGE_STATE` を登録してください。
+
 ## 重要な注意
 
-- このリポジトリは**非公開**にしてください。GitHub Freeの非公開リポジトリは月2,000分までActionsを無料で利用できます。
+- 配布元テンプレートは公開できますが、実際にSecretを登録して運用するリポジトリは**非公開**を推奨します。GitHub Freeの非公開リポジトリは月2,000分までActionsを無料で利用できます。
 - mineoの二段階認証はメールまたはSMSのワンタイムキーです。認証アプリ用のTOTPシークレットは使用しません。
 - 初回ログインで選ぶ「この端末を信頼する」の情報をセッションとしてGitHub Secretsに保管します。セッションが失効・無効化された場合は再設定が必要です。
 - セッションはログイン済み状態を再現できる機密情報です。GitHub Secret以外へ保存・共有しないでください。
@@ -27,7 +35,9 @@ GitHub Actionsで、平日16:10（日本時間）にmineoマイページへア�
    ```
 
 4. 出力をGitHubの **Settings → Secrets and variables → Actions → New repository secret** に、名前 `MINEO_STORAGE_STATE` で登録します。値はチャット・Issue・コミットに貼り付けないでください。
-5. Actionsタブから **Declare mineo Yuzurune** を手動実行し、成功を確認します。
+5. 必要に応じて **Settings → Actions → General** でActionsを有効にします。
+6. Actionsタブから **Declare mineo Yuzurune** を手動実行し、成功を確認します。
+7. 成功確認後、ローカルの `.mineo-storage-state.json` を削除します。GitHub Secretはそのまま利用できます。
 
 ## 復旧
 
@@ -44,3 +54,7 @@ npm test
 ```
 
 実際のmineoアカウントを使う動作確認は、GitHub Actionsの手動実行でのみ行ってください。画面キャプチャ・HTML・認証情報を成果物やログとして保存しないでください。
+
+## License
+
+[MIT License](LICENSE)
