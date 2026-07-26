@@ -1,0 +1,46 @@
+# mineo「ゆずるね。」自動宣言
+
+GitHub Actionsで、平日16:10（日本時間）にmineoマイページへアクセスし、翌営業日の「ゆずるね。」を宣言します。金曜日の実行は月曜日分です。
+
+## 重要な注意
+
+- このリポジトリは**非公開**にしてください。GitHub Freeの非公開リポジトリは月2,000分までActionsを無料で利用できます。
+- mineoの二段階認証はメールまたはSMSのワンタイムキーです。認証アプリ用のTOTPシークレットは使用しません。
+- 初回ログインで選ぶ「この端末を信頼する」の情報をセッションとしてGitHub Secretsに保管します。セッションが失効・無効化された場合は再設定が必要です。
+- セッションはログイン済み状態を再現できる機密情報です。GitHub Secret以外へ保存・共有しないでください。
+- CAPTCHAや追加認証を回避する処理は実装していません。発生時はワークフローを失敗させます。
+
+## 初回設定
+
+1. Google ChromeとNode.js 22以降をインストールし、次を実行します。
+
+   ```bash
+   npm install
+   npm run bootstrap-session
+   ```
+
+2. 専用の一時Chromeプロファイルが開きます。mineoへログインし、ワンタイムキーを入力して、必ず「この端末を信頼する」を選択します。マイページが表示されると、スクリプトが自動でセッションを保存します。通常利用中のChromeプロファイル、保存パスワード、Cookieは読み取りません。
+3. セッションをBase64化します。
+
+   ```bash
+   npm run encode-session
+   ```
+
+4. 出力をGitHubの **Settings → Secrets and variables → Actions → New repository secret** に、名前 `MINEO_STORAGE_STATE` で登録します。値はチャット・Issue・コミットに貼り付けないでください。
+5. Actionsタブから **Declare mineo Yuzurune** を手動実行し、成功を確認します。
+
+## 復旧
+
+`SESSION_EXPIRED`、`BOT_CHALLENGE`、`DECLARATION_CONTROL_NOT_FOUND` が出た場合、Actionsのログに個人情報は出ません。
+
+- `SESSION_EXPIRED`: 初回設定をやり直し、`MINEO_STORAGE_STATE`を置き換えます。
+- `BOT_CHALLENGE`: mineo側の確認を手動で完了してから、初回設定をやり直します。
+- `DECLARATION_CONTROL_NOT_FOUND`: mineo画面が変わった可能性があります。`src/declare.ts` の `declarationControl` を実際の画面に合わせて更新します。
+
+## 開発時の確認
+
+```bash
+npm test
+```
+
+実際のmineoアカウントを使う動作確認は、GitHub Actionsの手動実行でのみ行ってください。画面キャプチャ・HTML・認証情報を成果物やログとして保存しないでください。

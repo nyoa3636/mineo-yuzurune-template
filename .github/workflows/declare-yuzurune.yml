@@ -1,0 +1,33 @@
+name: Declare mineo Yuzurune
+
+on:
+  schedule:
+    # 07:10 UTC = 16:10 JST, Monday through Friday. Friday declares Monday.
+    - cron: "10 7 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  declare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      MINEO_STORAGE_STATE: ${{ secrets.MINEO_STORAGE_STATE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Restore trusted-device session
+        shell: bash
+        run: |
+          node -e 'const fs=require("node:fs"); const value=process.env.MINEO_STORAGE_STATE; if (!value) throw new Error("MINEO_STORAGE_STATE is not configured"); fs.writeFileSync(process.env.RUNNER_TEMP + "/mineo-storage-state.json", Buffer.from(value, "base64"), {mode: 0o600});'
+      - name: Declare Yuzurune
+        env:
+          MINEO_STORAGE_STATE_PATH: ${{ runner.temp }}/mineo-storage-state.json
+        run: npm run declare

@@ -1,0 +1,23 @@
+{
+  "name": "mineo-yuzurune-action",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/test/*.test.js",
+    "declare": "npm run build && node dist/declare.js",
+    "bootstrap-session": "npm run build && node dist/bootstrap-session.js",
+    "encode-session": "npm run build && node dist/encode-session.js"
+  },
+  "dependencies": {
+    "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
