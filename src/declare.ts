@@ -75,14 +75,15 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
   if (await passwordInput.count() !== 1) {
     passwordInput = page.locator('input[type="password"]');
   }
-  let loginButton = page.getByRole("button", { name: "ログイン", exact: true });
-  if (await loginButton.count() !== 1) {
-    loginButton = page.locator('input[type="submit"][value="ログイン"]');
-  }
   const passwordInputCount = await passwordInput.count();
-  const loginButtonCount = await loginButton.count();
-  if (passwordInputCount !== 1 || loginButtonCount !== 1) {
-    fail("LOGIN_UI_CHANGED", `the password login controls were not found (password=${passwordInputCount}, login=${loginButtonCount})`);
+  const loginButton = await firstVisible([
+    page.getByRole("button", { name: "ログイン", exact: true }),
+    page.locator('input[type="submit"][value="ログイン"]'),
+    page.locator('input[type="image"][alt*="ログイン"]'),
+    page.getByText("ログイン", { exact: true }),
+  ]);
+  if (passwordInputCount !== 1 || !loginButton) {
+    fail("LOGIN_UI_CHANGED", `the password login controls were not found (password=${passwordInputCount}, login=${loginButton ? 1 : 0})`);
   }
   await passwordInput.fill(password);
   await clickAndWaitForNavigation(page, loginButton);
