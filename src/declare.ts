@@ -22,8 +22,9 @@ async function currentDeclarationState(page: Page): Promise<ReturnType<typeof de
 
 async function firstVisible(candidates: Locator[]): Promise<Locator | undefined> {
   for (const candidate of candidates) {
-    if (await candidate.count() > 0 && await candidate.first().isVisible().catch(() => false)) {
-      return candidate.first();
+    const matches = await candidate.all();
+    for (const match of matches) {
+      if (await match.isVisible().catch(() => false)) return match;
     }
   }
   return undefined;
@@ -74,7 +75,7 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
   const passwordInput = await firstVisible([
     page.getByPlaceholder("eoIDパスワード", { exact: true }),
     page.locator('input[type="password"]'),
-    page.locator('input[name*="pass" i], input[id*="pass" i]'),
+    page.locator('input[name*="pass" i]:not([type="submit"]):not([type="button"]):not([type="image"]), input[id*="pass" i]:not([type="submit"]):not([type="button"]):not([type="image"])'),
     page.locator('input:not([type]), input[type="text"], input[type="email"], input[type="tel"]'),
   ]);
   let loginButton = await firstVisible([
