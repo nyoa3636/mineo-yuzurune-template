@@ -71,11 +71,11 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
   text = await visibleText(page);
   if (hasBotChallenge(text)) fail("BOT_CHALLENGE", "bot challenge detected; no attempt was made to bypass it");
 
-  let passwordInput = page.getByPlaceholder("eoIDパスワード", { exact: true });
-  if (await passwordInput.count() !== 1) {
-    passwordInput = page.locator('input[type="password"]');
-  }
-  const passwordInputCount = await passwordInput.count();
+  const passwordInput = await firstVisible([
+    page.getByPlaceholder("eoIDパスワード", { exact: true }),
+    page.locator('input[type="password"]'),
+    page.locator('input[name*="password" i]'),
+  ]);
   let loginButton = await firstVisible([
     page.getByRole("button", { name: "ログイン", exact: true }),
     page.locator('input[type="submit"][value="ログイン"]'),
@@ -84,15 +84,15 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
     page.locator('[name*="login" i], [id*="login" i]'),
     page.getByText("ログイン", { exact: true }),
   ]);
-  if (!loginButton && passwordInputCount === 1) {
+  if (!loginButton && passwordInput) {
     const passwordForm = page.locator("form").filter({ has: passwordInput });
     if (await passwordForm.count() === 1) {
       const submitControls = passwordForm.locator('button[type="submit"], input[type="submit"], input[type="image"]');
       if (await submitControls.count() === 1) loginButton = submitControls;
     }
   }
-  if (passwordInputCount !== 1 || !loginButton) {
-    fail("LOGIN_UI_CHANGED", `the password login controls were not found (password=${passwordInputCount}, login=${loginButton ? 1 : 0})`);
+  if (!passwordInput || !loginButton) {
+    fail("LOGIN_UI_CHANGED", `the password login controls were not found (password=${passwordInput ? "visible" : "missing"}, login=${loginButton ? "visible" : "missing"})`);
   }
   await passwordInput.fill(password);
   await clickAndWaitForNavigation(page, loginButton);
