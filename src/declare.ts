@@ -71,10 +71,18 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
   text = await visibleText(page);
   if (hasBotChallenge(text)) fail("BOT_CHALLENGE", "bot challenge detected; no attempt was made to bypass it");
 
-  const passwordInput = page.locator('input[type="password"]');
-  const loginButton = page.getByRole("button", { name: "ログイン", exact: true });
-  if (await passwordInput.count() !== 1 || await loginButton.count() !== 1) {
-    fail("LOGIN_UI_CHANGED", "the password login controls were not found");
+  let passwordInput = page.getByPlaceholder("eoIDパスワード", { exact: true });
+  if (await passwordInput.count() !== 1) {
+    passwordInput = page.locator('input[type="password"]');
+  }
+  let loginButton = page.getByRole("button", { name: "ログイン", exact: true });
+  if (await loginButton.count() !== 1) {
+    loginButton = page.locator('input[type="submit"][value="ログイン"]');
+  }
+  const passwordInputCount = await passwordInput.count();
+  const loginButtonCount = await loginButton.count();
+  if (passwordInputCount !== 1 || loginButtonCount !== 1) {
+    fail("LOGIN_UI_CHANGED", `the password login controls were not found (password=${passwordInputCount}, login=${loginButtonCount})`);
   }
   await passwordInput.fill(password);
   await clickAndWaitForNavigation(page, loginButton);
