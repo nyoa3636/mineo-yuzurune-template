@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { declarationState, hasBotChallenge, isLoginPage } from "../flow.js";
+import { declarationState, hasBotChallenge, isLoginPage, isOtpPage } from "../flow.js";
 
 test("recognizes declared state", () => {
   assert.equal(declarationState("ゆずるね。を宣言済みです"), "declared");
@@ -23,4 +23,6 @@ test("does not guess unknown text", () => {
 test("recognizes authentication and bot challenge pages", () => {
   assert.equal(isLoginPage("https://auth.eonet.jp/login", "ログイン"), true);
   assert.equal(hasBotChallenge("私はロボットではありません"), true);
+  assert.equal(hasBotChallenge("パズルを完成させてください"), true);
+  assert.equal(isOtpPage("ワンタイムキーを入力してください"), true);
 });

@@ -15,6 +15,7 @@ GitHub Actionsで、平日16:10（日本時間）にmineoマイページへア�
 - 配布元テンプレートは公開できますが、実際にSecretを登録して運用するリポジトリは**非公開**を推奨します。GitHub Freeの非公開リポジトリは月2,000分までActionsを無料で利用できます。
 - mineoの二段階認証はメールまたはSMSのワンタイムキーです。認証アプリ用のTOTPシークレットは使用しません。
 - 初回ログインで選ぶ「この端末を信頼する」の情報をセッションとしてGitHub Secretsに保管します。セッションが失効・無効化された場合は再設定が必要です。
+- 通常のログインセッションが切れた場合は、GitHub SecretsのeoID・パスワードで自動再ログインします。信頼済み端末が有効ならワンタイムキーは省略されます。
 - セッションはログイン済み状態を再現できる機密情報です。GitHub Secret以外へ保存・共有しないでください。
 - CAPTCHAや追加認証を回避する処理は実装していません。発生時はワークフローを失敗させます。
 
@@ -34,7 +35,11 @@ GitHub Actionsで、平日16:10（日本時間）にmineoマイページへア�
    npm run encode-session
    ```
 
-4. 出力をGitHubの **Settings → Secrets and variables → Actions → New repository secret** に、名前 `MINEO_STORAGE_STATE` で登録します。値はチャット・Issue・コミットに貼り付けないでください。
+4. GitHubの **Settings → Secrets and variables → Actions → New repository secret** に、以下の3件を登録します。値はチャット・Issue・コミットに貼り付けないでください。
+
+   - `MINEO_STORAGE_STATE`: `npm run encode-session` の出力
+   - `MINEO_EOID`: 自分のeoID
+   - `MINEO_PASSWORD`: eoIDパスワード
 5. 必要に応じて **Settings → Actions → General** でActionsを有効にします。
 6. Actionsタブから **Declare mineo Yuzurune** を手動実行し、成功を確認します。
 7. 成功確認後、ローカルの `.mineo-storage-state.json` を削除します。GitHub Secretはそのまま利用できます。
@@ -44,6 +49,8 @@ GitHub Actionsで、平日16:10（日本時間）にmineoマイページへア�
 `SESSION_EXPIRED`、`BOT_CHALLENGE`、`DECLARATION_CONTROL_NOT_FOUND` が出た場合、Actionsのログに個人情報は出ません。
 
 - `SESSION_EXPIRED`: 初回設定をやり直し、`MINEO_STORAGE_STATE`を置き換えます。
+- `LOGIN_FAILED`: `MINEO_EOID`と`MINEO_PASSWORD`を確認します。
+- `OTP_REQUIRED`: 信頼済み端末の登録が失効しています。初回設定をやり直します。
 - `BOT_CHALLENGE`: mineo側の確認を手動で完了してから、初回設定をやり直します。
 - `DECLARATION_CONTROL_NOT_FOUND`: mineo画面が変わった可能性があります。`src/declare.ts` の `declarationControl` を実際の画面に合わせて更新します。
 

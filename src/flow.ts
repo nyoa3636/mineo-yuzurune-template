@@ -29,5 +29,9 @@ export function isLoginPage(url: string, visibleText: string): boolean {
 }
 
 export function hasBotChallenge(visibleText: string): boolean {
-  return /(?:captcha|recaptcha|私はロボットではありません|不正なアクセス)/i.test(visibleText);
+  return /(?:captcha|recaptcha|私はロボットではありません|パズルを完成|不正なアクセス)/i.test(visibleText);
+}
+
+export function isOtpPage(visibleText: string): boolean {
+  return /(?:ワンタイムキー|確認コード|認証コード)/.test(visibleText);
 }
