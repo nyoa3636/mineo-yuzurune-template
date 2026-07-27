@@ -102,6 +102,9 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
   text = await visibleText(page);
   if (hasBotChallenge(text)) fail("BOT_CHALLENGE", "bot challenge detected; no attempt was made to bypass it");
   if (isOtpPage(text)) fail("OTP_REQUIRED", "mineo requested a one-time key; refresh the trusted-device session");
+  if (/ログイン情報が正しくありません/.test(text)) {
+    fail("CREDENTIALS_REJECTED", "mineo rejected the eoID/password; re-enter MINEO_EOID and MINEO_PASSWORD secrets carefully (paste from a password manager, do not retype)");
+  }
   if (isLoginPage(page.url(), text)) fail("LOGIN_FAILED", "mineo did not accept the saved credentials");
 }
 
@@ -110,11 +113,31 @@ async function main(): Promise<void> {
   if (!statePath) fail("CONFIGURATION", "MINEO_STORAGE_STATE_PATH is not set");
 
   // mineo accepts the stable Chrome channel used during bootstrap, while its
-  // login may reject Chrome for Testing even with otherwise valid credentials.
+  // login may reject automation-controlled browsers. Launch stable Chrome
+  // without automation markers.
   const headless = process.env.MINEO_HEADLESS !== "false";
-  const browser = await chromium.launch({ channel: "chrome", headless });
+  const browser = await chromium.launch({
+    channel: "chrome",
+    headless,
+    args: ["--disable-blink-features=AutomationControlled"],
+    ignoreDefaultArgs: ["--enable-automation"],
+  });
   try {
-    const context = await browser.newContext({ storageState: statePath, locale: "ja-JP", timezoneId: "Asia/Tokyo" });
+    const chromeVersion = browser.version();
+    const context = await browser.newContext({
+      storageState: statePath,
+      locale: "ja-JP",
+      timezoneId: "Asia/Tokyo",
+      userAgent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`,
+      viewport: { width: 1366, height: 768 },
+    });
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+      Object.defineProperty(navigator, "languages", { get: () => ["ja-JP", "ja", "en-US", "en"] });
+      Object.defineProperty(navigator, "plugins", { get: () => [1, 2, 3, 4, 5] });
+      const w = window as unknown as { chrome?: unknown };
+      w.chrome = w.chrome ?? { runtime: {} };
+    });
     const page = await context.newPage();
     await page.goto(MY_PAGE_URL, { waitUntil: "domcontentloaded", timeout });
     await authenticateIfNeeded(page);
