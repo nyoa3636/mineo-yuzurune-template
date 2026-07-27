@@ -109,7 +109,9 @@ async function main(): Promise<void> {
   const statePath = process.env.MINEO_STORAGE_STATE_PATH;
   if (!statePath) fail("CONFIGURATION", "MINEO_STORAGE_STATE_PATH is not set");
 
-  const browser = await chromium.launch({ headless: true });
+  // mineo accepts the stable Chrome channel used during bootstrap, while its
+  // login may reject Chrome for Testing even with otherwise valid credentials.
+  const browser = await chromium.launch({ channel: "chrome", headless: true });
   try {
     const context = await browser.newContext({ storageState: statePath, locale: "ja-JP", timezoneId: "Asia/Tokyo" });
     const page = await context.newPage();
