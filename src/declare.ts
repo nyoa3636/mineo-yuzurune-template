@@ -45,7 +45,7 @@ async function declarationLink(page: Page): Promise<Locator | undefined> {
 
 async function clickAndWaitForNavigation(page: Page, control: Locator): Promise<void> {
   await Promise.all([
-    page.waitForLoadState("domcontentloaded").catch(() => undefined),
+    page.waitForNavigation({ waitUntil: "domcontentloaded", timeout }).catch(() => undefined),
     control.click({ timeout }),
   ]);
 }
@@ -61,6 +61,7 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
     fail("SESSION_EXPIRED", "the session expired and MINEO_EOID or MINEO_PASSWORD is not configured");
   }
 
+  // Step 1: submit the eoID and wait for the password page to actually load.
   const idInput = page.getByRole("textbox", { name: "eoID", exact: true });
   const nextButton = page.getByRole("button", { name: "次へ", exact: true });
   if (await idInput.count() !== 1 || await nextButton.count() !== 1) {
@@ -69,34 +70,32 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
   await idInput.fill(eoId);
   await clickAndWaitForNavigation(page, nextButton);
 
-  text = await visibleText(page);
-  if (hasBotChallenge(text)) fail("BOT_CHALLENGE", "bot challenge detected; no attempt was made to bypass it");
+  // Step 2: wait for the real password field on the new page. Without this
+  // wait, the previous page (eoID form) is still rendered and its textbox can
+  // be mistaken for the password field.
+  const passwordInput = page.getByPlaceholder("eoIDパスワード", { exact: true })
+    .or(page.locator('input[type="password"]'));
+  const passwordAppeared = await passwordInput.first()
+    .waitFor({ state: "visible", timeout: 10_000 })
+    .then(() => true)
+    .catch(() => false);
+  if (!passwordAppeared) {
+    text = await visibleText(page);
+    if (hasBotChallenge(text)) fail("BOT_CHALLENGE", "bot challenge detected; no attempt was made to bypass it");
+    if (isOtpPage(text)) fail("OTP_REQUIRED", "mineo requested a one-time key before the password page; refresh the trusted-device session");
+    fail("LOGIN_UI_CHANGED", "the password field did not appear after submitting the eoID");
+  }
+  await passwordInput.first().fill(password);
 
-  const passwordInput = await firstVisible([
-    page.getByPlaceholder("eoIDパスワード", { exact: true }),
-    page.locator('input[type="password"]'),
-    page.locator('input[name*="pass" i]:not([type="submit"]):not([type="button"]):not([type="image"]), input[id*="pass" i]:not([type="submit"]):not([type="button"]):not([type="image"])'),
-    page.locator('input:not([type]), input[type="text"], input[type="email"], input[type="tel"]'),
-  ]);
-  let loginButton = await firstVisible([
+  const loginButton = await firstVisible([
     page.getByRole("button", { name: "ログイン", exact: true }),
     page.locator('input[type="submit"][value="ログイン"]'),
     page.locator('input[type="image"][alt*="ログイン"]'),
-    page.locator('input[type="image"][src*="login" i]'),
-    page.locator('[name*="login" i], [id*="login" i]'),
     page.getByText("ログイン", { exact: true }),
   ]);
-  if (!loginButton && passwordInput) {
-    const passwordForm = page.locator("form").filter({ has: passwordInput });
-    if (await passwordForm.count() === 1) {
-      const submitControls = passwordForm.locator('button[type="submit"], input[type="submit"], input[type="image"]');
-      if (await submitControls.count() === 1) loginButton = submitControls;
-    }
+  if (!loginButton) {
+    fail("LOGIN_UI_CHANGED", "the login button was not found on the password page");
   }
-  if (!passwordInput || !loginButton) {
-    fail("LOGIN_UI_CHANGED", `the password login controls were not found (password=${passwordInput ? "visible" : "missing"}, login=${loginButton ? "visible" : "missing"})`);
-  }
-  await passwordInput.fill(password);
   await clickAndWaitForNavigation(page, loginButton);
 
   text = await visibleText(page);
