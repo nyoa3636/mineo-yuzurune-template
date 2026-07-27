@@ -74,7 +74,8 @@ async function authenticateIfNeeded(page: Page): Promise<void> {
   const passwordInput = await firstVisible([
     page.getByPlaceholder("eoIDパスワード", { exact: true }),
     page.locator('input[type="password"]'),
-    page.locator('input[name*="password" i]'),
+    page.locator('input[name*="pass" i], input[id*="pass" i]'),
+    page.locator('input:not([type]), input[type="text"], input[type="email"], input[type="tel"]'),
   ]);
   let loginButton = await firstVisible([
     page.getByRole("button", { name: "ログイン", exact: true }),
