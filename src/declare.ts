@@ -111,7 +111,8 @@ async function main(): Promise<void> {
 
   // mineo accepts the stable Chrome channel used during bootstrap, while its
   // login may reject Chrome for Testing even with otherwise valid credentials.
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const headless = process.env.MINEO_HEADLESS !== "false";
+  const browser = await chromium.launch({ channel: "chrome", headless });
   try {
     const context = await browser.newContext({ storageState: statePath, locale: "ja-JP", timezoneId: "Asia/Tokyo" });
     const page = await context.newPage();

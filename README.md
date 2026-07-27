@@ -2,7 +2,7 @@
 
 GitHub Actionsで、平日16:10（日本時間）にmineoマイページへアクセスし、翌営業日の「ゆずるね。」を宣言します。金曜日の実行は月曜日分です。
 
-初回設定・クラウド実行ともにGoogle Chrome Stableを使用します。
+初回設定・クラウド実行ともにGoogle Chrome Stableを使用します。GitHub Actionsでは仮想画面上の通常表示Chromeとして起動します。
 
 ## テンプレートから始める
 

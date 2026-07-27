@@ -32,4 +32,5 @@ jobs:
       - name: Declare Yuzurune
         env:
           MINEO_STORAGE_STATE_PATH: ${{ runner.temp }}/mineo-storage-state.json
-        run: npm run declare
+          MINEO_HEADLESS: "false"
+        run: xvfb-run --auto-servernum npm run declare
