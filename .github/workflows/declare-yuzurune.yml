@@ -34,3 +34,11 @@ jobs:
           MINEO_STORAGE_STATE_PATH: ${{ runner.temp }}/mineo-storage-state.json
           MINEO_HEADLESS: "false"
         run: xvfb-run --auto-servernum npm run declare
+      - name: Persist updated session secret
+        if: ${{ success() && secrets.SESSION_UPDATE_TOKEN != '' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.SESSION_UPDATE_TOKEN }}
+          MINEO_STORAGE_STATE_PATH: ${{ runner.temp }}/mineo-storage-state.json
+        run: |
+          base64 -w0 "$MINEO_STORAGE_STATE_PATH" | gh secret set MINEO_STORAGE_STATE

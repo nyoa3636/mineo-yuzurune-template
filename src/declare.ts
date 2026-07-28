@@ -50,6 +50,83 @@ async function clickAndWaitForNavigation(page: Page, control: Locator): Promise<
   ]);
 }
 
+/**
+ * Returns a privacy-safe description of the current page for diagnostics:
+ * URL path, title, and generic form-control labels only. Never includes page
+ * text, which may contain personal information.
+ */
+async function pageFingerprint(page: Page): Promise<string> {
+  const url = new URL(page.url());
+  const title = await page.title().catch(() => "");
+  const controls = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLElement>("button, input"))
+      .map((el) => {
+        const label = el instanceof HTMLInputElement
+          ? (el.value || el.getAttribute("alt") || el.name || el.type)
+          : (el.textContent || "").trim();
+        return label.replace(/\s+/g, " ").slice(0, 40);
+      })
+      .filter((label) => label.length > 0)
+      .slice(0, 10),
+  ).catch(() => [] as string[]);
+  return `url=${url.origin}${url.pathname} title=${JSON.stringify(title)} controls=${JSON.stringify(controls)}`;
+}
+
+/**
+ * Handles known interstitial pages between login and the my page top, such as
+ * device-trust registration or informational notices. Returns true when an
+ * action was taken and the caller should re-evaluate the page.
+ */
+async function handleIntermediatePage(page: Page): Promise<boolean> {
+  const text = await visibleText(page);
+  if (hasBotChallenge(text)) fail("BOT_CHALLENGE", "bot challenge detected; no attempt was made to bypass it");
+
+  // An OTP page that actually shows an input cannot be handled unattended.
+  if (isOtpPage(text)) {
+    const editable = await firstVisible([
+      page.locator('input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="image"]):not([type="checkbox"])'),
+    ]);
+    if (editable) fail("OTP_REQUIRED", "mineo requested a one-time key; refresh the trusted-device session");
+  }
+
+  // "Register this device as trusted" style prompts: tick the trust box.
+  await page.evaluate(() => {
+    for (const box of Array.from(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'))) {
+      const labelText = box.closest("label")?.innerText || box.parentElement?.innerText || "";
+      if (/信頼/.test(labelText) && !box.checked) box.click();
+    }
+  }).catch(() => undefined);
+
+  const continueControl = await firstVisible([
+    page.getByRole("button", { name: "次へ", exact: true }),
+    page.getByRole("button", { name: /同意する/ }),
+    page.locator('input[type="submit"][value*="次へ"], input[type="submit"][value*="登録"], input[type="submit"][value*="同意"], input[type="submit"][value="OK"], input[type="submit"][value*="閉じる"]'),
+    page.getByRole("link", { name: /マイページ/ }),
+  ]);
+  if (!continueControl) return false;
+  await clickAndWaitForNavigation(page, continueControl);
+  return true;
+}
+
+/**
+ * Brings the browser to a page that exposes the Yuzurune declaration UI,
+ * passing through login and known interstitial pages.
+ */
+async function ensureOnDeclarationPage(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await authenticateIfNeeded(page);
+    const state = await currentDeclarationState(page);
+    if (state !== "unknown") return;
+    if (await declarationControl(page) || await declarationLink(page)) return;
+
+    if (await handleIntermediatePage(page)) continue;
+
+    // Unknown page: navigate back to the my page top and retry.
+    await page.goto(MY_PAGE_URL, { waitUntil: "domcontentloaded", timeout });
+  }
+  fail("DECLARATION_CONTROL_NOT_FOUND", `no supported declaration page reached (${await pageFingerprint(page)})`);
+}
+
 async function authenticateIfNeeded(page: Page): Promise<void> {
   let text = await visibleText(page);
   if (hasBotChallenge(text)) fail("BOT_CHALLENGE", "bot challenge detected; no attempt was made to bypass it");
@@ -139,10 +216,11 @@ async function main(): Promise<void> {
     });
     const page = await context.newPage();
     await page.goto(MY_PAGE_URL, { waitUntil: "domcontentloaded", timeout });
-    await authenticateIfNeeded(page);
+    await ensureOnDeclarationPage(page);
 
     let state = await currentDeclarationState(page);
     if (state === "declared") {
+      await context.storageState({ path: statePath }).catch(() => undefined);
       console.log("YUZURUNE_ALREADY_DECLARED");
       return;
     }
@@ -171,6 +249,7 @@ async function main(): Promise<void> {
     if (state !== "declared") {
       fail("DECLARATION_NOT_CONFIRMED", "the confirmation text was not found after clicking the declaration control");
     }
+    await context.storageState({ path: statePath }).catch(() => undefined);
     console.log("YUZURUNE_DECLARED");
   } finally {
     await browser.close();
